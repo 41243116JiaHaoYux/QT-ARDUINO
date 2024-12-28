@@ -6,7 +6,10 @@
 // WiFi 帳密
 const char *ssid = "wenwen 的 S24 Ultra"; // Enter your Wi-Fi name
 const char *password = "********";  // Enter Wi-Fi password
-
+//timer
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 28800;//格林威治時間,一格3600,GMT+8就是8*3600=28800
+const int   daylightOffset_sec = 3600;
 // 硬體設備基本變數
 char id[20] = "test-0001";
 char wateringTime[10] = "00:00";
@@ -187,7 +190,51 @@ void setup() {
     
     client.setServer(mqtt_broker, mqtt_port);
     client.setCallback(callback);
+    // Init and get the time
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    printLocalTime();
 
+    //disconnect WiFi as it's no longer needed
+    /*WiFi.disconnect(true);//連上拿到時間資料後就切斷連線
+    WiFi.mode(WIFI_OFF);
+    */
+}
+//獲取時間(放loop)
+void printLocalTime(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");//參考C++的strftime語法就會知道為甚麼這樣寫
+  Serial.print("Day of week: ");
+  Serial.println(&timeinfo, "%A");
+  Serial.print("Month: ");
+  Serial.println(&timeinfo, "%B");
+  Serial.print("Day of Month: ");
+  Serial.println(&timeinfo, "%d");
+  Serial.print("Year: ");
+  Serial.println(&timeinfo, "%Y");
+  Serial.print("Hour: ");
+  Serial.println(&timeinfo, "%H");
+  Serial.print("Hour (12 hour format): ");
+  Serial.println(&timeinfo, "%I");
+  Serial.print("Minute: ");
+  Serial.println(&timeinfo, "%M");
+  Serial.print("Second: ");
+  Serial.println(&timeinfo, "%S");
+
+  Serial.println("TEST variables");//抓取時間資料裡的"小時"存成字串做測試,以便後續應用
+  char myHour[3];
+  char myMinute[3];
+
+  strftime(myHour,3, "%H", &timeinfo);
+    strftime(myMinute,3, "%M", &timeinfo);
+
+  Serial.println(myHour);
+  String hour = String(myHour);
+  String minute = String(Minute);
+}
     while (!client.connected()) {
         String client_id = "esp32-client-";
         client_id += String(WiFi.macAddress());
@@ -206,7 +253,6 @@ void setup() {
 
 void loop() {
     client.loop();
-
+    
     delay(10);
 }
-
