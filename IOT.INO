@@ -68,11 +68,16 @@ StaticJsonDocument<512> realTimeIrrigation(StaticJsonDocument<512> updateData){
 
     returnJson["id"] = updateData["id"];
     returnJson["command"] = updateData["command"];
-  
+
     if(irrigation == true){
         returnJson["status"] = "error";
         returnJson["error"] = "當前正在澆水";
     }
+else{
+irrigation=true;
+returnJson["status"] = "sucess";
+returnJson["error"] = "";
+}
     return returnJson;
 }
 
