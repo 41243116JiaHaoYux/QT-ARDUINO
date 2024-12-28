@@ -1,4 +1,4 @@
-[code]
+
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -202,4 +202,4 @@ void loop() {
 
     delay(10);
 }
-[/code]
+
