@@ -152,9 +152,11 @@ void callback(char *topic, byte *payload, unsigned int length) {
     }
 }
 //澆水
-void water(){
+void openWater(){
     digitalWrite(L298N_1,HIGH);
-    delay(5000);
+}
+//如果感測到盆底流出水就停止澆水
+void offWater(){
     digitalWrite(L298N_1,LOW);
 }
 //開燈
