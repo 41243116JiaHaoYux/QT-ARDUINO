@@ -1,4 +1,3 @@
-
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -6,19 +5,23 @@
 // WiFi 帳密
 const char *ssid = "wenwen 的 S24 Ultra"; // Enter your Wi-Fi name
 const char *password = "********";  // Enter Wi-Fi password
-//timer
+
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 28800;//格林威治時間,一格3600,GMT+8就是8*3600=28800
 const int   daylightOffset_sec = 3600;
 // 硬體設備基本變數
 char id[20] = "test-0001";
 char wateringTime[10] = "00:00";
+char localtimes[10]= "00:00";
+char localtimesoff[10]= "00:00";　//用於關燈
 char lightStart[10] = "00:00";
 short int duration = 120;
 bool irrigation = false; // 是否正在澆水
 #define L298N_1 2
 #define L298N_2 4
-#define Light   5;
+#define Light   5
+#define WaterSensor   18
+
 // MQTT 基本資訊
 char *mqtt_broker = "broker.hivemq.com";
 char *topic = "wenwen/test";
@@ -177,9 +180,6 @@ void offLight(){
 }
 // 初始化 Wi-Fi 和 MQTT
 void setup() {
-    digitalWrite(L298N_1,LOW);    
-    digitalWrite(L298N_2,LOW);
-
     Serial.begin(115200);
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
@@ -187,37 +187,12 @@ void setup() {
         Serial.println("連接 Wi-Fi..");
     }
     Serial.println("成功連接!");
-    
+
     client.setServer(mqtt_broker, mqtt_port);
     client.setCallback(callback);
     // Init and get the time
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    printLocalTime();
-
-    //disconnect WiFi as it's no longer needed
-    /*WiFi.disconnect(true);//連上拿到時間資料後就切斷連線
-    WiFi.mode(WIFI_OFF);
-    */
-}
-//獲取時間(放loop)
-void printLocalTime(){
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return;
-  }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");//參考C++的strftime語法就會知道為甚麼這樣寫
-  Serial.println("TEST variables");//抓取時間資料裡的"小時"與"分鐘"存成字串做測試,以便後續應用
-  char myHour[3];
-  char myMinute[3];
-
-  strftime(myHour,3, "%H", &timeinfo);
-    strftime(myMinute,3, "%M", &timeinfo);
-
-  Serial.println(myHour);
-  String hour = String(myHour);
-  String minute = String(Minute);
-}
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  LocalTime();
     while (!client.connected()) {
         String client_id = "esp32-client-";
         client_id += String(WiFi.macAddress());
@@ -232,10 +207,122 @@ void printLocalTime(){
     }
     client.subscribe(topic);
 }
+//獲取時間(放loop)
+void LocalTime(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");//參考C++的strftime語法就會知道為甚麼這樣寫
+  Serial.print("Day of week: ");
+  Serial.println(&timeinfo, "%A");
+  Serial.print("Month: ");
+  Serial.println(&timeinfo, "%B");
+  Serial.print("Day of Month: ");
+  Serial.println(&timeinfo, "%d");
+  Serial.print("Year: ");
+  Serial.println(&timeinfo, "%Y");
+  Serial.print("Hour: ");
+  Serial.println(&timeinfo, "%H");
+  Serial.print("Hour (12 hour format): ");
+  Serial.println(&timeinfo, "%I");
+  Serial.print("Minute: ");
+  Serial.println(&timeinfo, "%M");
+  Serial.print("Second: ");
+  Serial.println(&timeinfo, "%S");
 
+  Serial.println("TEST variables");//抓取時間資料裡的"小時"存成字串做測試,以便後續應用
+  char myHour[2];
+  char myMinute[2];
+  
+  strftime(myHour,3, "%H", &timeinfo);
+  strftime(myMinute,3, "%M", &timeinfo);
+  localtimes[0]=myHour;
+  localtimes[5]=':';
+  localtimes[6]=myMimute;
+  
+ }
 
+//用於關燈
+void LocalTimeoff(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");//參考C++的strftime語法就會知道為甚麼這樣寫
+  Serial.print("Day of week: ");
+  Serial.println(&timeinfo, "%A");
+  Serial.print("Month: ");
+  Serial.println(&timeinfo, "%B");
+  Serial.print("Day of Month: ");
+  Serial.println(&timeinfo, "%d");
+  Serial.print("Year: ");
+  Serial.println(&timeinfo, "%Y");
+  Serial.print("Hour: ");
+  Serial.println(&timeinfo, "%H");
+  Serial.print("Hour (12 hour format): ");
+  Serial.println(&timeinfo, "%I");
+  Serial.print("Minute: ");
+  Serial.println(&timeinfo, "%M");
+  Serial.print("Second: ");
+  Serial.println(&timeinfo, "%S");
+
+  Serial.println("TEST variables");//抓取時間資料裡的"小時"存成字串做測試,以便後續應用
+  char myHour[2];
+  char myMinute[2];
+  
+  strftime(myHour,3, "%H", &timeinfo);
+  strftime(myMinute,3, "%M", &timeinfo);
+  localtimes[0]=myHour;
+  localtimes[5]=':';
+  localtimes[6]=myMimute;
+  myHour[0]+='1'; //12小時後關燈
+  myHour[1]+='2';
+  localtimesoff[0]=myHour";
+  localtimesoff[5]=':';
+  localtimesoff[6]=myMimute;
+ }
+
+bool waterCheck(){//檢查水是否澆透(澆透則loop停止澆水)
+  if(analogRead(WaterSensor)>=100)
+    return false;
+  else
+    return true;
+}
 void loop() {
-    client.loop();
+    client.loop(); // 處理 MQTT 客戶端
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    LocalTime(); // 更新當前時間
     
-    delay(10);
+    // 開燈判斷
+    if (String(localtimes) == String(lightStart)) { 
+        openLight();
+        configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+        LocalTimeoff(); // 設置關燈時間
+    }
+    
+    // 關燈判斷
+    if (String(localtimes) == String(localtimesoff)) { 
+        offLight();
+    }
+
+    // 澆水邏輯
+    if (irrigation) { 
+        if (!waterCheck()) { 
+            offWater(); // 如果水已澆透，關閉水泵
+            irrigation = false; // 更新狀態
+            Serial.println("澆水完成，已關閉水泵");
+        }
+    } else {
+        // 如果當前時間等於設定的澆水時間，開啟水泵
+        if (String(localtimes) == String(wateringTime)) { 
+            openWater();
+            irrigation = true; // 更新澆水狀態
+            Serial.println("已開始澆水");
+        }
+    }
+
+    delay(1000); // 防止過於頻繁地輪詢
 }
