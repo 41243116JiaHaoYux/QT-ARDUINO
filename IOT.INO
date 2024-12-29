@@ -280,7 +280,7 @@ void LocalTimeoff(){
   localtimes[6]=myMimute;
   myHour[0]+='1'; //12小時後關燈
   myHour[1]+='2';
-  localtimesoff[0]=myHour";
+  localtimesoff[0]=myHour;
   localtimesoff[5]=':';
   localtimesoff[6]=myMimute;
  }
